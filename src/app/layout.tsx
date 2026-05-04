@@ -13,8 +13,18 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "1:1 P2P Chat",
-  description: "가장 빠르고 간편한 실시간 1:1 채팅 서비스",
+  title: "Real-time Chat",
+  description: "실시간 자유 대화 광장",
+  icons: {
+    icon: "/icon.png",
+    apple: "/apple-icon.png",
+  },
+  viewport: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Chat App",
+  },
 };
 
 export default function RootLayout({

@@ -151,13 +151,13 @@ export default function GlobalChatPage() {
             <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/20">
               <MessageSquare className="h-10 w-10" />
             </div>
-            <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">P2P Real-time Chat</h1>
-            <p className="mt-2 text-slate-500 font-medium text-lg">광장에 입장하기 위해 이름을 알려주세요</p>
+            <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">Real-time Chat</h1>
+            <p className="mt-2 text-slate-500 font-medium text-lg">광장에 입장하기 위해 닉네임을 알려주세요</p>
           </div>
 
           <form onSubmit={handleJoin} className="space-y-6">
             <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700 ml-1">내 이름</label>
+              <label className="text-sm font-bold text-slate-700 ml-1">닉네임</label>
               <Input 
                 placeholder="사용할 닉네임을 입력하세요" 
                 value={userName}
@@ -175,10 +175,6 @@ export default function GlobalChatPage() {
               입장하기
             </Button>
           </form>
-          
-          <p className="text-center text-xs text-slate-400">
-            접속하면 모든 사용자들과 즉시 대화를 나눌 수 있습니다.
-          </p>
         </div>
       </div>
     );

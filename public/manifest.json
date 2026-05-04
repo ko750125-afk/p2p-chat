@@ -1,0 +1,17 @@
+{
+  "name": "P2P Real-time Chat",
+  "short_name": "P2P Chat",
+  "description": "실시간 자유 대화 광장",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#3b82f6",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
