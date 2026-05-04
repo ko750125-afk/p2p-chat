@@ -261,7 +261,7 @@ export default function GlobalChatPage() {
   }
 
   return (
-    <div className="flex h-screen flex-col bg-[#fcfdfe]">
+    <div className="flex h-[100dvh] flex-col bg-[#fcfdfe] overflow-hidden">
       <header className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white/90 backdrop-blur-xl px-6 py-4 shadow-sm">
         <div className="flex items-center gap-4">
           <div className="relative">
@@ -311,7 +311,7 @@ export default function GlobalChatPage() {
       </header>
 
       <ScrollArea className="flex-1 px-6 py-8 md:px-12 bg-gradient-to-b from-white to-slate-50/50">
-        <div className="mx-auto flex max-w-4xl flex-col gap-8">
+        <div className="mx-auto flex max-w-4xl flex-col gap-8 pb-32">
           <div className="flex justify-center">
             <div className="inline-flex items-center gap-2 bg-white/80 border border-slate-100 shadow-sm text-slate-500 text-xs font-bold py-2 px-8 rounded-full backdrop-blur-sm">
               <MessageSquare className="h-3 w-3 text-primary" />
@@ -359,7 +359,7 @@ export default function GlobalChatPage() {
         </div>
       </ScrollArea>
 
-      <footer className="bg-white/80 backdrop-blur-xl border-t border-slate-100 p-6 pb-10">
+      <footer className="sticky bottom-0 z-20 bg-white/95 backdrop-blur-xl border-t border-slate-100 p-4 pb-6 md:p-6 shadow-[0_-4px_20px_rgba(0,0,0,0,03)]">
         <form className="mx-auto flex max-w-4xl gap-4" onSubmit={handleSendMessage}>
           <div className="relative flex-1 group">
             <Input

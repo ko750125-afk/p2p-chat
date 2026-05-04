@@ -27,8 +27,9 @@ messaging.onBackgroundMessage((payload) => {
     badge: '/icon.png',
     tag: 'chat-notification',
     renotify: true,
+    vibrate: [200, 100, 200, 100, 200], // 진동 패턴 추가
     data: payload.data
   };
 
-  self.registration.showNotification(notificationTitle, notificationOptions);
+  return self.registration.showNotification(notificationTitle, notificationOptions);
 });

@@ -49,8 +49,31 @@ export async function POST(request: Request) {
         title: title || "새 메시지",
         body: body || "내용이 없습니다.",
       },
+      android: {
+        priority: "high" as const,
+        notification: {
+          sound: "default",
+          clickAction: "FLUTTER_NOTIFICATION_CLICK",
+        },
+      },
+      apns: {
+        payload: {
+          aps: {
+            sound: "default",
+          },
+        },
+      },
+      webpush: {
+        headers: {
+          Urgency: "high",
+        },
+        notification: {
+          icon: "/icon.png",
+          badge: "/icon.png",
+          vibrate: [200, 100, 200],
+        },
+      },
       data: {
-        click_action: "FLUTTER_NOTIFICATION_CLICK", // 또는 앱 URL
         senderId: senderId,
       },
       tokens: tokens,
