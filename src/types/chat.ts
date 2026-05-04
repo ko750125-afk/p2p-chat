@@ -1,3 +1,9 @@
+export interface Participant {
+  name: string;
+  photo?: string;
+  lastSeen: number;
+}
+
 export interface ChatRoom {
   id: string;
   creatorId: string;
@@ -8,7 +14,7 @@ export interface ChatRoom {
 }
 
 export interface Message {
-  id: string;
+  id?: string;
   senderId: string;
   senderName: string;
   text: string;
