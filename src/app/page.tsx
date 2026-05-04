@@ -310,8 +310,8 @@ export default function GlobalChatPage() {
         </div>
       </header>
 
-      <ScrollArea className="flex-1 px-6 py-8 md:px-12 bg-gradient-to-b from-white to-slate-50/50">
-        <div className="mx-auto flex max-w-4xl flex-col gap-8 pb-32">
+      <ScrollArea className="flex-1 px-4 py-6 md:px-12 bg-gradient-to-b from-white to-slate-50/50">
+        <div className="mx-auto flex max-w-4xl flex-col gap-6 pb-40">
           <div className="flex justify-center">
             <div className="inline-flex items-center gap-2 bg-white/80 border border-slate-100 shadow-sm text-slate-500 text-xs font-bold py-2 px-8 rounded-full backdrop-blur-sm">
               <MessageSquare className="h-3 w-3 text-primary" />
@@ -359,13 +359,20 @@ export default function GlobalChatPage() {
         </div>
       </ScrollArea>
 
-      <footer className="sticky bottom-0 z-20 bg-white/95 backdrop-blur-xl border-t border-slate-100 p-4 pb-6 md:p-6 shadow-[0_-4px_20px_rgba(0,0,0,0,03)]">
+      <footer className="fixed bottom-0 left-0 right-0 z-20 bg-white/95 backdrop-blur-xl border-t border-slate-100 p-4 pb-safe md:p-6 shadow-[0_-4px_20px_rgba(0,0,0,0.03)]">
         <form className="mx-auto flex max-w-4xl gap-4" onSubmit={handleSendMessage}>
           <div className="relative flex-1 group">
             <Input
+              id="chat-input-field"
+              name="chat-input-field"
               placeholder="메시지를 입력하세요..."
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
+              autoComplete="one-time-code"
+              data-lpignore="true"
+              data-form-type="other"
+              spellCheck={false}
+              inputMode="text"
               className="h-16 pl-6 pr-16 bg-slate-50/50 border-slate-200 focus:bg-white focus:ring-4 focus:ring-primary/10 rounded-[1.5rem] text-[16px] font-semibold transition-all placeholder:text-slate-400"
             />
             <div className="absolute right-4 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-primary/5 flex items-center justify-center opacity-0 group-focus-within:opacity-100 transition-opacity">

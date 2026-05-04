@@ -20,14 +20,16 @@ const messaging = firebase.messaging();
 messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw.js] Received background message ', payload);
   
-  const notificationTitle = payload.notification.title;
+  const notificationTitle = payload.notification?.title || "새 메시지";
   const notificationOptions = {
-    body: payload.notification.body,
+    body: payload.notification?.body || "",
     icon: '/icon.png',
     badge: '/icon.png',
-    tag: 'chat-notification',
+    tag: 'p2p-chat-msg',
     renotify: true,
-    vibrate: [200, 100, 200, 100, 200], // 진동 패턴 추가
+    vibrate: [300, 100, 300, 100, 300], // 긴 진동
+    silent: false,
+    requireInteraction: true,
     data: payload.data
   };
 

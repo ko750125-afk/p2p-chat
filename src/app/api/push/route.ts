@@ -53,13 +53,17 @@ export async function POST(request: Request) {
         priority: "high" as const,
         notification: {
           sound: "default",
+          channelId: "default_channel",
           clickAction: "FLUTTER_NOTIFICATION_CLICK",
+          notificationCount: 1,
         },
       },
       apns: {
         payload: {
           aps: {
             sound: "default",
+            badge: 1,
+            contentAvailable: true,
           },
         },
       },
