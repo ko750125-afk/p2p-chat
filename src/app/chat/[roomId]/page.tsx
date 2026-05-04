@@ -33,10 +33,19 @@ export default function ChatRoomPage() {
   // 자동 스크롤 및 알림음 로직
   useEffect(() => {
     if (messages.length > 0) {
-      // 1. 하단 스크롤
-      if (!isInitialLoad.current) {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-      }
+      // 1. 하단 스크롤 (setTimeout으로 렌더링 완료 후 실행 보장)
+      const scrollToBottom = () => {
+        if (messagesEndRef.current) {
+          messagesEndRef.current.scrollIntoView({ 
+            behavior: isInitialLoad.current ? "auto" : "smooth",
+            block: "end"
+          });
+        }
+      };
+
+      // 즉시 실행 및 약간의 지연 실행으로 렌더링 타이밍 대응
+      scrollToBottom();
+      const timer = setTimeout(scrollToBottom, 100);
 
       // 2. 알림음 재생 (새 메시지가 왔고, 내가 보낸 게 아닐 때)
       if (!isInitialLoad.current && messages.length > prevMessageCount.current) {
@@ -47,6 +56,7 @@ export default function ChatRoomPage() {
       }
       
       prevMessageCount.current = messages.length;
+      return () => clearTimeout(timer);
     }
   }, [messages, userId]);
 
@@ -161,16 +171,29 @@ export default function ChatRoomPage() {
               <h2 className="font-bold text-slate-900 leading-none">실시간 그룹 대화</h2>
               <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-[10px] h-5 px-1.5 font-bold">GROUP</Badge>
             </div>
-            <p className="mt-1 text-xs font-medium text-slate-500">
-              <span className="text-primary/70">접속 중: </span>
-              {Object.entries(participants).map(([id, name]) => {
+            <p className="mt-1 text-xs font-medium text-slate-500 flex flex-wrap items-center gap-1">
+              <span className="text-primary/70 font-bold bg-primary/5 px-2 py-0.5 rounded-full">
+                접속 {Object.keys(participants || {}).length}명
+              </span>
+              <span className="text-slate-300 mx-1">|</span>
+              {(Object.entries(participants || {})).map(([id, name], index, array) => {
                 const isCreator = id === roomInfo?.creatorId;
                 const isMe = id === userId;
-                let label = "";
-                if (isCreator) label += " (방장)";
-                if (isMe) label += " (나)";
-                return <span key={id} className={cn(isMe && "font-bold text-primary", isCreator && "text-slate-900")}>{name}{label}</span>;
-              }).reduce((prev, curr) => [prev, ", ", curr] as any)}
+                return (
+                  <span key={id} className="inline-flex items-center">
+                    <span className={cn(
+                      "px-1.5 py-0.5 rounded-md transition-all",
+                      isMe && "bg-primary/10 font-bold text-primary shadow-sm", 
+                      isCreator && "text-slate-900 font-semibold"
+                    )}>
+                      {isCreator && <span className="mr-0.5" title="방장">👑</span>}
+                      {name}
+                      {isMe && <span className="ml-0.5 text-[10px] opacity-70">(나)</span>}
+                    </span>
+                    {index < array.length - 1 && <span className="text-slate-300 ml-1">·</span>}
+                  </span>
+                );
+              })}
             </p>
           </div>
         </div>
@@ -197,28 +220,29 @@ export default function ChatRoomPage() {
           </div>
           
           {messages.map((msg, index) => {
-            const isMe = (msg as any).senderId === userId;
-            const showName = index === 0 || (messages[index-1] as any).senderId !== (msg as any).senderId;
+            const isMe = msg.senderId === userId;
+            const showName = index === 0 || messages[index-1].senderId !== msg.senderId;
 
             return (
               <div
-                key={msg.id}
+                key={msg.id || index}
                 className={`flex flex-col ${isMe ? "items-end" : "items-start"} group animate-in fade-in slide-in-from-bottom-2 duration-300`}
               >
                 {!isMe && showName && (
-                  <span className="mb-1.5 ml-1 text-xs font-bold text-slate-600">
+                  <span className="mb-1.5 ml-1 text-xs font-bold text-slate-600 flex items-center gap-1">
                     {msg.senderName}
+                    {msg.senderId === roomInfo?.creatorId && <span className="text-[10px] text-amber-500">👑</span>}
                   </span>
                 )}
                 <div className="relative flex max-w-[85%] items-end gap-2">
                   {isMe && (
                     <span className="mb-0.5 text-[10px] font-medium text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" suppressHydrationWarning>
-                      {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}
                     </span>
                   )}
                   <div
                     className={cn(
-                      "rounded-2xl px-4 py-2.5 text-[15px] leading-relaxed shadow-sm transition-all hover:shadow-md",
+                      "rounded-2xl px-4 py-2.5 text-[15px] leading-relaxed shadow-sm transition-all hover:shadow-md break-all whitespace-pre-wrap",
                       isMe
                         ? "bg-gradient-to-br from-primary to-primary/90 text-primary-foreground rounded-tr-none"
                         : "bg-white text-slate-800 rounded-tl-none border border-slate-100"
@@ -228,15 +252,15 @@ export default function ChatRoomPage() {
                   </div>
                   {!isMe && (
                     <span className="mb-0.5 text-[10px] font-medium text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" suppressHydrationWarning>
-                      {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}
                     </span>
                   )}
                 </div>
               </div>
             );
           })}
-          {/* 스크롤 하단 앵커 */}
-          <div ref={messagesEndRef} className="h-2" />
+          {/* 스크롤 하단 앵커 - 더 확실하게 보이기 위해 높이 조절 */}
+          <div ref={messagesEndRef} className="h-4 w-full flex-shrink-0" aria-hidden="true" />
         </div>
       </ScrollArea>
 
