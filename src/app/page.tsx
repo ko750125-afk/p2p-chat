@@ -111,10 +111,15 @@ export default function GlobalChatPage() {
 
   const handleJoin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!userName.trim()) return;
+    const trimmedName = userName.trim();
+    if (!trimmedName) return;
     
-    sessionStorage.setItem("p2p-chat-username", userName);
-    sessionStorage.setItem("p2p-chat-userid", userId);
+    // 유저 ID가 없는 경우 즉석 생성 (안전장치)
+    const currentId = userId || Math.random().toString(36).substring(2, 11);
+    if (!userId) setUserId(currentId);
+
+    sessionStorage.setItem("p2p-chat-username", trimmedName);
+    sessionStorage.setItem("p2p-chat-userid", currentId);
     setIsJoined(true);
   };
 
@@ -159,9 +164,14 @@ export default function GlobalChatPage() {
                 onChange={(e) => setUserName(e.target.value)}
                 className="h-14 rounded-xl border-slate-200 bg-slate-50 text-lg focus:ring-primary shadow-sm"
                 autoFocus
+                required
               />
             </div>
-            <Button className="w-full h-14 rounded-xl text-lg font-bold shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95" size="lg">
+            <Button 
+              type="submit"
+              className="w-full h-14 rounded-xl text-lg font-bold shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95" 
+              size="lg"
+            >
               입장하기
             </Button>
           </form>
