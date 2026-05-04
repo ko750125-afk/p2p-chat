@@ -130,8 +130,8 @@ export default function ChatRoomPage() {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="font-bold text-slate-900 leading-none">실시간 1:1 대화</h2>
-              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-[10px] h-5 px-1.5 font-bold">LIVE</Badge>
+              <h2 className="font-bold text-slate-900 leading-none">실시간 그룹 대화</h2>
+              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-[10px] h-5 px-1.5 font-bold">GROUP</Badge>
             </div>
             <p className="mt-1 text-xs font-medium text-slate-500">
               참여자: {Object.values(participants).join(", ")}

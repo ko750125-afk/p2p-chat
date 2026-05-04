@@ -82,13 +82,13 @@ export default function ChatListPage() {
     const participants = roomData?.participants || {};
     const participantCount = Object.keys(participants).length;
 
-    if (roomData && (participantCount < 2 || participants[userId])) {
+    if (roomData) {
       await update(ref(db, `p2pchat/rooms/${selectedRoom.id}/participants`), {
         [userId]: userName
       });
       router.push(`/chat/${selectedRoom.id}`);
     } else {
-      alert("방이 가득 찼거나 사라졌습니다.");
+      alert("방이 사라졌습니다.");
       setIsJoinDialogOpen(false);
     }
   };
@@ -102,8 +102,8 @@ export default function ChatListPage() {
               <Users className="h-6 w-6" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold tracking-tight text-slate-900">1:1 P2P Chat</h1>
-              <p className="text-slate-500">실시간으로 소통하는 가장 빠른 방법</p>
+              <h1 className="text-3xl font-bold tracking-tight text-slate-900">Multi-User Chat</h1>
+              <p className="text-slate-500">제한 없는 실시간 그룹 대화</p>
             </div>
           </div>
           
@@ -170,14 +170,11 @@ export default function ChatListPage() {
                   <CardHeader className="space-y-4 pb-4">
                     <div className="flex items-center justify-between">
                       <Badge 
-                        variant={isFull ? "secondary" : "default"}
-                        className={cn(
-                          "px-2.5 py-0.5 font-bold transition-colors",
-                          isFull ? "bg-slate-100 text-slate-500" : "bg-green-100 text-green-700 hover:bg-green-100"
-                        )}
+                        variant="default"
+                        className="bg-green-100 text-green-700 hover:bg-green-100 px-2.5 py-0.5 font-bold transition-colors"
                       >
-                        <div className={cn("mr-1.5 h-1.5 w-1.5 rounded-full", isFull ? "bg-slate-400" : "bg-green-500 animate-pulse")} />
-                        {count}/2명 참여중
+                        <div className="mr-1.5 h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+                        {count}명 대화중
                       </Badge>
                     </div>
                     <div>
@@ -191,19 +188,15 @@ export default function ChatListPage() {
                   </CardHeader>
                   <CardFooter className="pt-0">
                     <Button 
-                      className={cn(
-                        "w-full gap-2 font-bold h-11 transition-all",
-                        isFull ? "bg-slate-100 text-slate-400 hover:bg-slate-100" : "shadow-md hover:shadow-lg"
-                      )}
-                      variant={isFull ? "secondary" : "default"}
-                      disabled={isFull}
+                      className="w-full gap-2 font-bold h-11 transition-all shadow-md hover:shadow-lg"
+                      variant="default"
                       onClick={() => {
                         setSelectedRoom(room);
                         setIsJoinDialogOpen(true);
                       }}
                     >
-                      {isFull ? "가득 찬 방" : "대화 참여하기"}
-                      {!isFull && <ArrowRight className="h-4 w-4" />}
+                      대화 참여하기
+                      <ArrowRight className="h-4 w-4" />
                     </Button>
                   </CardFooter>
                 </Card>
