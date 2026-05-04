@@ -19,6 +19,7 @@ export default function ChatRoomPage() {
   const roomId = params.roomId as string;
   
   const [participants, setParticipants] = useState<Record<string, string>>({});
+  const [roomInfo, setRoomInfo] = useState<ChatRoom | null>(null);
   const [inputText, setInputText] = useState("");
   const [userName, setUserName] = useState("");
   const [userId, setUserId] = useState("");
@@ -70,17 +71,18 @@ export default function ChatRoomPage() {
     set(participantRef, storedName);
     onDisconnect(participantRef).remove();
 
-    // 2. 참여자 목록 모니터링
-    const participantsRef = ref(db, `p2pchat/rooms/${roomId}/participants`);
-    const unsubscribeParticipants = onValue(participantsRef, (snapshot) => {
+    // 2. 참여자 목록 및 방 정보 모니터링
+    const roomRef = ref(db, `p2pchat/rooms/${roomId}`);
+    const unsubscribeRoom = onValue(roomRef, (snapshot) => {
       const data = snapshot.val();
       if (!data) {
-        // 모든 참여자가 나갔다면 방 삭제 (방장 또는 마지막 인원이 나갈 때 처리될 수도 있음)
-        // 여기서는 클라이언트 측에서 감지하여 홈으로 이동
         router.push("/");
         return;
       }
-      setParticipants(data);
+      setRoomInfo({ id: roomId, ...data });
+      if (data.participants) {
+        setParticipants(data.participants);
+      }
     });
 
     // 3. 메시지 리스닝
@@ -101,7 +103,7 @@ export default function ChatRoomPage() {
     });
 
     return () => {
-      unsubscribeParticipants();
+      unsubscribeRoom();
       unsubscribeMessages();
       // 수동으로 나갈 때도 participants에서 제거
       remove(participantRef);
@@ -160,7 +162,15 @@ export default function ChatRoomPage() {
               <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-[10px] h-5 px-1.5 font-bold">GROUP</Badge>
             </div>
             <p className="mt-1 text-xs font-medium text-slate-500">
-              참여자: {Object.values(participants).join(", ")}
+              <span className="text-primary/70">접속 중: </span>
+              {Object.entries(participants).map(([id, name]) => {
+                const isCreator = id === roomInfo?.creatorId;
+                const isMe = id === userId;
+                let label = "";
+                if (isCreator) label += " (방장)";
+                if (isMe) label += " (나)";
+                return <span key={id} className={cn(isMe && "font-bold text-primary", isCreator && "text-slate-900")}>{name}{label}</span>;
+              }).reduce((prev, curr) => [prev, ", ", curr] as any)}
             </p>
           </div>
         </div>

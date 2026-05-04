@@ -57,6 +57,7 @@ export default function ChatListPage() {
 
     const roomData = {
       creatorName: userName,
+      creatorId: userId,
       title: newRoomName,
       createdAt: Date.now(),
       participants: {
@@ -174,7 +175,7 @@ export default function ChatListPage() {
                         className="bg-green-100 text-green-700 hover:bg-green-100 px-2.5 py-0.5 font-bold transition-colors"
                       >
                         <div className="mr-1.5 h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
-                        {count}명 대화중
+                        총 {count}명 접속
                       </Badge>
                     </div>
                     <div>

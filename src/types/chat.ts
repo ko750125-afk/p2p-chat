@@ -1,5 +1,6 @@
 export interface ChatRoom {
   id: string;
+  creatorId: string;
   creatorName: string;
   title?: string;
   participants: Record<string, string>;
