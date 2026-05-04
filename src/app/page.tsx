@@ -24,6 +24,7 @@ export default function GlobalChatPage() {
   const [inputText, setInputText] = useState("");
   const [notificationEnabled, setNotificationEnabled] = useState(false);
   
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const prevMessageCount = useRef(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -148,12 +149,16 @@ export default function GlobalChatPage() {
   useEffect(() => {
     if (messages.length > 0) {
       const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ 
-          behavior: isInitialLoad.current ? "auto" : "smooth",
-          block: "end"
-        });
+        if (messagesContainerRef.current) {
+          const container = messagesContainerRef.current;
+          container.scrollTo({
+            top: container.scrollHeight,
+            behavior: isInitialLoad.current ? "instant" : "smooth"
+          });
+        }
       };
       scrollToBottom();
+      // 이미지나 폰트 렌더링 지연을 대비해 한번 더 실행
       const timer = setTimeout(scrollToBottom, 100);
 
       if (!isInitialLoad.current && messages.length > prevMessageCount.current) {
@@ -310,8 +315,11 @@ export default function GlobalChatPage() {
         </div>
       </header>
 
-      <ScrollArea className="flex-1 px-4 py-6 md:px-12 bg-gradient-to-b from-white to-slate-50/50">
-        <div className="mx-auto flex max-w-4xl flex-col gap-6 pb-40">
+      <main 
+        ref={messagesContainerRef}
+        className="flex-1 overflow-y-auto scroll-smooth px-4 py-6 md:px-12 bg-gradient-to-b from-white to-slate-50/50"
+      >
+        <div className="mx-auto flex max-w-4xl flex-col gap-6 pb-10">
           <div className="flex justify-center">
             <div className="inline-flex items-center gap-2 bg-white/80 border border-slate-100 shadow-sm text-slate-500 text-xs font-bold py-2 px-8 rounded-full backdrop-blur-sm">
               <MessageSquare className="h-3 w-3 text-primary" />
@@ -355,35 +363,40 @@ export default function GlobalChatPage() {
               </div>
             );
           })}
-          <div ref={messagesEndRef} className="h-8 w-full" />
+          <div ref={messagesEndRef} className="h-4 w-full" />
         </div>
-      </ScrollArea>
+      </main>
 
-      <footer className="fixed bottom-0 left-0 right-0 z-20 bg-white/95 backdrop-blur-xl border-t border-slate-100 p-4 pb-safe md:p-6 shadow-[0_-4px_20px_rgba(0,0,0,0.03)]">
-        <form className="mx-auto flex max-w-4xl gap-4" onSubmit={handleSendMessage}>
+      <footer className="bg-white/95 backdrop-blur-xl border-t border-slate-100 p-4 pb-safe md:p-6 shadow-[0_-4px_20px_rgba(0,0,0,0.03)]">
+        <form 
+          className="mx-auto flex max-w-4xl gap-4" 
+          onSubmit={handleSendMessage}
+          autoComplete="off"
+        >
           <div className="relative flex-1 group">
-            <Input
-              id="chat-input-field"
-              name="chat-input-field"
+            <textarea
+              id="message-input"
+              rows={1}
               placeholder="메시지를 입력하세요..."
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
-              autoComplete="one-time-code"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSendMessage(e);
+                }
+              }}
+              autoComplete="new-password"
               data-lpignore="true"
-              data-form-type="other"
               spellCheck={false}
-              inputMode="text"
-              className="h-16 pl-6 pr-16 bg-slate-50/50 border-slate-200 focus:bg-white focus:ring-4 focus:ring-primary/10 rounded-[1.5rem] text-[16px] font-semibold transition-all placeholder:text-slate-400"
+              className="w-full min-h-[60px] max-h-[120px] py-4 pl-6 pr-12 bg-slate-50/50 border border-slate-200 focus:bg-white focus:outline-none focus:ring-4 focus:ring-primary/10 rounded-[1.5rem] text-[16px] font-semibold transition-all placeholder:text-slate-400 resize-none overflow-y-auto"
             />
-            <div className="absolute right-4 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-primary/5 flex items-center justify-center opacity-0 group-focus-within:opacity-100 transition-opacity">
-              <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-            </div>
           </div>
           <Button 
             type="submit" 
             size="icon" 
             disabled={!inputText.trim()}
-            className="h-16 w-16 rounded-[1.5rem] shadow-xl shadow-primary/30 transition-all hover:scale-[1.05] active:scale-90 bg-primary hover:bg-primary/90"
+            className="h-[60px] w-[60px] rounded-[1.5rem] shadow-xl shadow-primary/30 transition-all hover:scale-[1.05] active:scale-90 bg-primary hover:bg-primary/90 flex-shrink-0"
           >
             <Send className="h-7 w-7" />
           </Button>
