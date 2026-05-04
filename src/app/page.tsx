@@ -1,235 +1,280 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { ref, onValue, push, set, update, get } from "firebase/database";
+import { useEffect, useState, useRef } from "react";
+import { ref, onValue, push, set, onDisconnect, remove } from "firebase/database";
 import { db } from "@/lib/firebase";
-import { ChatRoom } from "@/types/chat";
+import { Message } from "@/types/chat";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Users, ArrowRight } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { Send, Users, LogOut, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { buttonVariants } from "@/components/ui/button";
 
-export default function ChatListPage() {
-  const [rooms, setRooms] = useState<ChatRoom[]>([]);
-  const [newRoomName, setNewRoomName] = useState("");
+const GLOBAL_ROOM_ID = "global_lobby";
+
+export default function GlobalChatPage() {
+  const [isJoined, setIsJoined] = useState(false);
   const [userName, setUserName] = useState("");
-  const [isJoinDialogOpen, setIsJoinDialogOpen] = useState(false);
-  const [selectedRoom, setSelectedRoom] = useState<ChatRoom | null>(null);
-  const router = useRouter();
+  const [userId, setUserId] = useState("");
+  const [participants, setParticipants] = useState<Record<string, string>>({});
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [inputText, setInputText] = useState("");
+  
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const prevMessageCount = useRef(0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const isInitialLoad = useRef(true);
 
+  // 1. 초기 닉네임 로드
   useEffect(() => {
-    // 닉네임 로드
     const storedName = sessionStorage.getItem("p2p-chat-username");
-    if (storedName) setUserName(storedName);
+    const storedId = sessionStorage.getItem("p2p-chat-userid");
+    
+    if (storedName && storedId) {
+      setUserName(storedName);
+      setUserId(storedId);
+      setIsJoined(true);
+    } else {
+      // 닉네임이 없으면 ID만 미리 생성 (선택사항)
+      const newId = Math.random().toString(36).substring(2, 11);
+      setUserId(newId);
+    }
 
-    const roomsRef = ref(db, "p2pchat/rooms");
-    const unsubscribe = onValue(roomsRef, (snapshot) => {
+    // 알림음 초기화
+    audioRef.current = new Audio("/assets/universfield-new-notification-022-370046.mp3");
+    audioRef.current.volume = 0.5;
+  }, []);
+
+  // 2. 채팅 입장 후 Firebase 연결
+  useEffect(() => {
+    if (!isJoined || !userId) return;
+
+    // 참여 정보 설정
+    const participantRef = ref(db, `p2pchat/rooms/${GLOBAL_ROOM_ID}/participants/${userId}`);
+    set(participantRef, userName);
+    onDisconnect(participantRef).remove();
+
+    // 참여자 목록 모니터링
+    const participantsRef = ref(db, `p2pchat/rooms/${GLOBAL_ROOM_ID}/participants`);
+    const unsubscribeParticipants = onValue(participantsRef, (snapshot) => {
+      setParticipants(snapshot.val() || {});
+    });
+
+    // 메시지 리스닝
+    const messagesRef = ref(db, `p2pchat/messages/${GLOBAL_ROOM_ID}`);
+    const unsubscribeMessages = onValue(messagesRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        const roomList = Object.entries(data).map(([id, room]: [string, any]) => ({
+        const msgList = Object.entries(data).map(([id, msg]: [string, any]) => ({
           id,
-          ...room,
+          ...msg,
         }));
-        setRooms(roomList);
+        setMessages(msgList);
+        isInitialLoad.current = false;
       } else {
-        setRooms([]);
+        setMessages([]);
+        isInitialLoad.current = false;
       }
     });
 
-    return () => unsubscribe();
-  }, []);
-
-  const handleCreateRoom = async () => {
-    if (!newRoomName.trim() || !userName.trim()) return;
-
-    sessionStorage.setItem("p2p-chat-username", userName);
-    const userId = sessionStorage.getItem("p2p-chat-userid") || Math.random().toString(36).substring(2, 11);
-    sessionStorage.setItem("p2p-chat-userid", userId);
-
-    const roomsRef = ref(db, "p2pchat/rooms");
-    const newRoomRef = push(roomsRef);
-    const roomId = newRoomRef.key;
-
-    const roomData = {
-      creatorName: userName,
-      creatorId: userId,
-      title: newRoomName,
-      createdAt: Date.now(),
-      participants: {
-        [userId]: userName
-      }
+    return () => {
+      unsubscribeParticipants();
+      unsubscribeMessages();
+      remove(participantRef);
     };
+  }, [isJoined, userId, userName]);
 
-    await set(newRoomRef, roomData);
-    router.push(`/chat/${roomId}`);
-  };
+  // 3. 자동 스크롤 및 알림음
+  useEffect(() => {
+    if (messages.length > 0) {
+      const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({ 
+          behavior: isInitialLoad.current ? "auto" : "smooth",
+          block: "end"
+        });
+      };
+      scrollToBottom();
+      const timer = setTimeout(scrollToBottom, 100);
 
-  const handleJoinRoom = async () => {
-    if (!selectedRoom || !userName.trim()) return;
-
-    sessionStorage.setItem("p2p-chat-username", userName);
-    const userId = sessionStorage.getItem("p2p-chat-userid") || Math.random().toString(36).substring(2, 11);
-    sessionStorage.setItem("p2p-chat-userid", userId);
-
-    const roomRef = ref(db, `p2pchat/rooms/${selectedRoom.id}`);
-    const snapshot = await get(roomRef);
-    const roomData = snapshot.val();
-
-    const participants = roomData?.participants || {};
-    const participantCount = Object.keys(participants).length;
-
-    if (roomData) {
-      await update(ref(db, `p2pchat/rooms/${selectedRoom.id}/participants`), {
-        [userId]: userName
-      });
-      router.push(`/chat/${selectedRoom.id}`);
-    } else {
-      alert("방이 사라졌습니다.");
-      setIsJoinDialogOpen(false);
+      if (!isInitialLoad.current && messages.length > prevMessageCount.current) {
+        const lastMsg = messages[messages.length - 1];
+        if (lastMsg.senderId !== userId) {
+          audioRef.current?.play().catch(() => {});
+        }
+      }
+      prevMessageCount.current = messages.length;
+      return () => clearTimeout(timer);
     }
+  }, [messages, userId]);
+
+  const handleJoin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userName.trim()) return;
+    
+    sessionStorage.setItem("p2p-chat-username", userName);
+    sessionStorage.setItem("p2p-chat-userid", userId);
+    setIsJoined(true);
   };
+
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inputText.trim()) return;
+
+    const messagesRef = ref(db, `p2pchat/messages/${GLOBAL_ROOM_ID}`);
+    await push(messagesRef, {
+      senderName: userName,
+      senderId: userId,
+      text: inputText,
+      timestamp: Date.now(),
+    });
+    setInputText("");
+  };
+
+  const handleLogout = () => {
+    sessionStorage.clear();
+    setIsJoined(false);
+    window.location.reload();
+  };
+
+  if (!isJoined) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#f8fafc] p-4">
+        <div className="w-full max-w-md space-y-8 rounded-3xl bg-white p-8 shadow-2xl shadow-slate-200 animate-in fade-in zoom-in duration-500">
+          <div className="text-center">
+            <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/20">
+              <MessageSquare className="h-10 w-10" />
+            </div>
+            <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">P2P Real-time Chat</h1>
+            <p className="mt-2 text-slate-500 font-medium text-lg">광장에 입장하기 위해 이름을 알려주세요</p>
+          </div>
+
+          <form onSubmit={handleJoin} className="space-y-6">
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-slate-700 ml-1">내 이름</label>
+              <Input 
+                placeholder="사용할 닉네임을 입력하세요" 
+                value={userName}
+                onChange={(e) => setUserName(e.target.value)}
+                className="h-14 rounded-xl border-slate-200 bg-slate-50 text-lg focus:ring-primary shadow-sm"
+                autoFocus
+              />
+            </div>
+            <Button className="w-full h-14 rounded-xl text-lg font-bold shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95" size="lg">
+              입장하기
+            </Button>
+          </form>
+          
+          <p className="text-center text-xs text-slate-400">
+            접속하면 모든 사용자들과 즉시 대화를 나눌 수 있습니다.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <main className="min-h-screen bg-slate-50 p-4 md:p-8">
-      <div className="mx-auto max-w-4xl">
-        <header className="mb-8 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="rounded-2xl bg-primary p-3 text-primary-foreground shadow-lg shadow-primary/20">
-              <Users className="h-6 w-6" />
+    <div className="flex h-screen flex-col bg-[#f8fafc]">
+      {/* 헤더 */}
+      <header className="sticky top-0 z-10 flex items-center justify-between border-b bg-white/80 backdrop-blur-md px-6 py-4 shadow-sm">
+        <div className="flex items-center gap-4">
+          <Avatar className="h-12 w-12 border-2 border-primary/20 shadow-inner">
+            <AvatarFallback className="bg-gradient-to-br from-primary to-primary/60 text-white font-bold text-lg">
+              {userName.substring(0, 2).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="font-bold text-slate-900 leading-none">Global Square</h2>
+              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-[10px] h-5 px-1.5 font-bold">LIVE</Badge>
             </div>
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight text-slate-900">Multi-User Chat</h1>
-              <p className="text-slate-500">제한 없는 실시간 그룹 대화</p>
+            <div className="mt-1 flex flex-wrap items-center gap-1 text-[11px] font-medium text-slate-500">
+              <span className="text-primary/70 font-bold bg-primary/5 px-2 py-0.5 rounded-full">
+                {Object.keys(participants).length}명 접속 중
+              </span>
+              <span className="text-slate-300 mx-1">|</span>
+              {Object.entries(participants).slice(0, 5).map(([id, name], index, array) => (
+                <span key={id} className={cn("inline-flex items-center", id === userId && "text-primary font-bold")}>
+                  {name}{id === userId && "(나)"}
+                  {index < array.length - 1 && <span className="mx-0.5 opacity-30">·</span>}
+                </span>
+              ))}
+              {Object.keys(participants).length > 5 && <span className="opacity-50">외 {Object.keys(participants).length - 5}명</span>}
             </div>
           </div>
-          
-          <Dialog>
-            <DialogTrigger className={cn(buttonVariants({ size: "lg" }), "gap-2 rounded-full shadow-lg hover:shadow-xl transition-all")}>
-              <Plus className="h-5 w-5" />
-              방 만들기
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
-              <DialogHeader>
-                <DialogTitle className="text-2xl font-bold">새로운 채팅방 생성</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-6 py-6">
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-slate-700">내 이름</label>
-                  <Input 
-                    placeholder="사용할 이름을 입력하세요" 
-                    value={userName}
-                    onChange={(e) => setUserName(e.target.value)}
-                    className="h-12 border-slate-200 focus-visible:ring-primary"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-slate-700">방 이름 (또는 주제)</label>
-                  <Input 
-                    placeholder="예: 즐거운 대화방" 
-                    value={newRoomName}
-                    onChange={(e) => setNewRoomName(e.target.value)}
-                    className="h-12 border-slate-200 focus-visible:ring-primary"
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="ghost" onClick={() => setIsJoinDialogOpen(false)} className="h-12 px-6">취소</Button>
-                <Button 
-                  onClick={handleCreateRoom} 
-                  disabled={!newRoomName.trim() || !userName.trim()}
-                  className="h-12 px-8 font-bold"
-                >
-                  생성 및 입장
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </header>
-
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {rooms.length === 0 ? (
-            <div className="col-span-full flex flex-col items-center justify-center py-24 text-center">
-              <div className="mb-4 rounded-full bg-slate-100 p-6 text-slate-300">
-                <Users className="h-12 w-12" />
-              </div>
-              <h3 className="text-xl font-semibold text-slate-900">현재 활성화된 방이 없습니다</h3>
-              <p className="mt-2 text-slate-500">우측 상단의 버튼을 눌러 첫 번째 대화방을 만들어보세요!</p>
-            </div>
-          ) : (
-            rooms.map((room) => {
-              const participants = (room as any).participants || {};
-              const count = Object.keys(participants).length;
-              const isFull = count >= 2;
-
-              return (
-                <Card key={room.id} className="group overflow-hidden border-none shadow-sm ring-1 ring-slate-200 transition-all hover:-translate-y-1 hover:shadow-xl hover:ring-primary/20">
-                  <CardHeader className="space-y-4 pb-4">
-                    <div className="flex items-center justify-between">
-                      <Badge 
-                        variant="default"
-                        className="bg-green-100 text-green-700 hover:bg-green-100 px-2.5 py-0.5 font-bold transition-colors"
-                      >
-                        <div className="mr-1.5 h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
-                        총 {count}명 접속
-                      </Badge>
-                    </div>
-                    <div>
-                      <CardTitle className="text-xl font-bold text-slate-900 line-clamp-1 group-hover:text-primary transition-colors">
-                        {(room as any).title || `${room.creatorName}님의 대화방`}
-                      </CardTitle>
-                      <CardDescription className="mt-1 flex items-center text-sm font-medium text-slate-500" suppressHydrationWarning>
-                        개설자: {room.creatorName}
-                      </CardDescription>
-                    </div>
-                  </CardHeader>
-                  <CardFooter className="pt-0">
-                    <Button 
-                      className="w-full gap-2 font-bold h-11 transition-all shadow-md hover:shadow-lg"
-                      variant="default"
-                      onClick={() => {
-                        setSelectedRoom(room);
-                        setIsJoinDialogOpen(true);
-                      }}
-                    >
-                      대화 참여하기
-                      <ArrowRight className="h-4 w-4" />
-                    </Button>
-                  </CardFooter>
-                </Card>
-              );
-            })
-          )}
         </div>
+        <Button variant="ghost" size="icon" onClick={handleLogout} className="text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full">
+          <LogOut className="h-5 w-5" />
+        </Button>
+      </header>
 
+      {/* 대화 영역 */}
+      <ScrollArea className="flex-1 px-4 py-6 md:px-8">
+        <div className="mx-auto flex max-w-4xl flex-col gap-6">
+          <div className="flex justify-center mb-4">
+            <Badge variant="secondary" className="bg-slate-200/50 text-slate-500 font-medium py-1.5 px-6 rounded-full border-none">
+              대화 광장에 오신 것을 환영합니다!
+            </Badge>
+          </div>
+          
+          {messages.map((msg, index) => {
+            const isMe = msg.senderId === userId;
+            const showName = index === 0 || messages[index-1].senderId !== msg.senderId;
 
-        {/* 참여 닉네임 입력 다이얼로그 */}
-        <Dialog open={isJoinDialogOpen} onOpenChange={setIsJoinDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>채팅방 참여</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">채팅에서 사용할 이름</label>
-                <Input 
-                  placeholder="이름을 입력하세요" 
-                  value={userName}
-                  onChange={(e) => setUserName(e.target.value)}
-                />
+            return (
+              <div key={msg.id || index} className={`flex flex-col ${isMe ? "items-end" : "items-start"} group animate-in fade-in slide-in-from-bottom-2 duration-300`}>
+                {!isMe && showName && (
+                  <span className="mb-1.5 ml-1 text-xs font-bold text-slate-600">
+                    {msg.senderName}
+                  </span>
+                )}
+                <div className="relative flex max-w-[85%] items-end gap-2">
+                  {isMe && (
+                    <span className="mb-0.5 text-[10px] font-medium text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  )}
+                  <div className={cn(
+                    "rounded-2xl px-4 py-2.5 text-[15px] leading-relaxed shadow-sm break-all whitespace-pre-wrap transition-all",
+                    isMe ? "bg-primary text-primary-foreground rounded-tr-none shadow-primary/10" : "bg-white text-slate-800 rounded-tl-none border border-slate-100 shadow-slate-100"
+                  )}>
+                    {msg.text}
+                  </div>
+                  {!isMe && (
+                    <span className="mb-0.5 text-[10px] font-medium text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  )}
+                </div>
               </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsJoinDialogOpen(false)}>취소</Button>
-              <Button onClick={handleJoinRoom} disabled={!userName.trim()}>입장하기</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
-    </main>
+            );
+          })}
+          <div ref={messagesEndRef} className="h-4 w-full" />
+        </div>
+      </ScrollArea>
+
+      {/* 입력 영역 */}
+      <footer className="bg-white border-t p-4 pb-8">
+        <form className="mx-auto flex max-w-4xl gap-3" onSubmit={handleSendMessage}>
+          <div className="relative flex-1">
+            <Input
+              placeholder="메시지를 입력하세요..."
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              className="h-14 pl-5 pr-14 bg-slate-50 border-slate-200 focus:ring-primary rounded-2xl text-[15px]"
+            />
+          </div>
+          <Button 
+            type="submit" 
+            size="icon" 
+            disabled={!inputText.trim()}
+            className="h-14 w-14 rounded-2xl shadow-lg shadow-primary/20 transition-transform active:scale-95"
+          >
+            <Send className="h-6 w-6" />
+          </Button>
+        </form>
+      </footer>
+    </div>
   );
 }
