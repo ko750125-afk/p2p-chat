@@ -24,6 +24,8 @@ export default function ChatRoomPage() {
   const [userId, setUserId] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const isInitialLoad = useRef(true);
 
   useEffect(() => {
     const storedName = sessionStorage.getItem("p2p-chat-username");
@@ -36,6 +38,10 @@ export default function ChatRoomPage() {
     
     setUserName(storedName);
     setUserId(storedId);
+
+    // 0. 알림음 객체 초기화 (브라우저 상호작용 후 재생 가능)
+    audioRef.current = new Audio("/assets/universfield-new-notification-022-370046.mp3");
+    audioRef.current.volume = 0.5;
 
     // 1. 참여자 존재 설정 및 연결 해제 시 자동 제거
     const participantRef = ref(db, `p2pchat/rooms/${roomId}/participants/${storedId}`);
@@ -64,13 +70,26 @@ export default function ChatRoomPage() {
           id,
           ...msg,
         }));
+        
+        // 새로운 메시지가 추가되었고 초기 로드가 아닐 때 알림음 재생
+        if (!isInitialLoad.current && msgList.length > messages.length) {
+          const lastMsg = msgList[msgList.length - 1];
+          if (lastMsg.senderId !== storedId) {
+            audioRef.current?.play().catch(e => console.log("Audio play blocked:", e));
+          }
+        }
+        
         setMessages(msgList);
+        isInitialLoad.current = false;
+
         // 스크롤 하단 이동
         setTimeout(() => {
           if (scrollRef.current) {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
           }
         }, 100);
+      } else {
+        isInitialLoad.current = false;
       }
     });
 
