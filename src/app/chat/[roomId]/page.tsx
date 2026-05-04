@@ -24,8 +24,30 @@ export default function ChatRoomPage() {
   const [userId, setUserId] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const prevMessageCount = useRef(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const isInitialLoad = useRef(true);
+
+  // 자동 스크롤 및 알림음 로직
+  useEffect(() => {
+    if (messages.length > 0) {
+      // 1. 하단 스크롤
+      if (!isInitialLoad.current) {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      }
+
+      // 2. 알림음 재생 (새 메시지가 왔고, 내가 보낸 게 아닐 때)
+      if (!isInitialLoad.current && messages.length > prevMessageCount.current) {
+        const lastMsg = messages[messages.length - 1];
+        if (lastMsg.senderId !== userId) {
+          audioRef.current?.play().catch(e => console.log("Audio play blocked:", e));
+        }
+      }
+      
+      prevMessageCount.current = messages.length;
+    }
+  }, [messages, userId]);
 
   useEffect(() => {
     const storedName = sessionStorage.getItem("p2p-chat-username");
@@ -71,23 +93,8 @@ export default function ChatRoomPage() {
           ...msg,
         }));
         
-        // 새로운 메시지가 추가되었고 초기 로드가 아닐 때 알림음 재생
-        if (!isInitialLoad.current && msgList.length > messages.length) {
-          const lastMsg = msgList[msgList.length - 1];
-          if (lastMsg.senderId !== storedId) {
-            audioRef.current?.play().catch(e => console.log("Audio play blocked:", e));
-          }
-        }
-        
         setMessages(msgList);
         isInitialLoad.current = false;
-
-        // 스크롤 하단 이동
-        setTimeout(() => {
-          if (scrollRef.current) {
-            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-          }
-        }, 100);
       } else {
         isInitialLoad.current = false;
       }
@@ -218,6 +225,8 @@ export default function ChatRoomPage() {
               </div>
             );
           })}
+          {/* 스크롤 하단 앵커 */}
+          <div ref={messagesEndRef} className="h-2" />
         </div>
       </ScrollArea>
 
